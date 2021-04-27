@@ -74,6 +74,11 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             request.ontimeout = (evt) => {
                 reject(Error('timeout '+ evt.toString()));
             };
+            if (method === 'POST') {
+                // allow send/receive cookies by api url
+                request.withCredentials = true;
+            }
+
             request.send();
         });
 
