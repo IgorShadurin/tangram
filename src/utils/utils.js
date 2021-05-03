@@ -41,7 +41,7 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
     else {
         var request = new XMLHttpRequest();
         var promise = new Promise((resolve, reject) => {
-            request.open(method, url, true);
+            request.open(method === 'FAIR' ? 'GET' : method, url, true);
             request.timeout = timeout;
             request.responseType = responseType;
 
@@ -58,7 +58,20 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
                         resolve({ body: request.responseText, status: request.status });
                     }
                     else {
-                        resolve({ body: request.response, status: request.status });
+                        if (method === 'FAIR') {
+                            let response = atob(JSON.parse(request.response).values);
+                            const delim = response.indexOf(',');
+                            if (delim > -1) {
+                                // +1 for indexOf +1 for "
+                                response = response.substring(delim + 2);
+                                response = response.replaceAll('""', '"');
+                                response = response.slice(0, -1);
+                            }
+
+                            resolve({body: response, status: request.status});
+                        } else {
+                            resolve({body: request.response, status: request.status});
+                        }
                     }
                 }
                 else if (request.status === 204) { // No Content
@@ -74,7 +87,7 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             request.ontimeout = (evt) => {
                 reject(Error('timeout '+ evt.toString()));
             };
-            if (method === 'POST') {
+            if (method === 'FAIR') {
                 // allow send/receive cookies by api url
                 request.withCredentials = true;
             }

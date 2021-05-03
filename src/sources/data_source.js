@@ -303,7 +303,7 @@ export class NetworkSource extends DataSource {
 
         return new Promise(resolve => {
             let request_id = (network_request_id++) + '-' + url;
-            let promise = Utils.io(url, 60 * 1000, this.response_type, 'POST', this.request_headers, request_id);
+            let promise = Utils.io(url, 60 * 1000, this.response_type, 'FAIR', this.request_headers, request_id);
 
             source_data.request_id = request_id;
             source_data.error = null;

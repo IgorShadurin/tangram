@@ -634,7 +634,7 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
   } else {
     var request = new XMLHttpRequest();
     var promise = new Promise((resolve, reject) => {
-      request.open(method, url, true);
+      request.open(method === 'FAIR' ? 'GET' : method, url, true);
       request.timeout = timeout;
       request.responseType = responseType; // Attach optional request headers
 
@@ -652,10 +652,27 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
               status: request.status
             });
           } else {
-            resolve({
-              body: request.response,
-              status: request.status
-            });
+            if (method === 'FAIR') {
+              let response = atob(JSON.parse(request.response).values);
+              const delim = response.indexOf(',');
+
+              if (delim > -1) {
+                // +1 for indexOf +1 for "
+                response = response.substring(delim + 2);
+                response = response.replaceAll('""', '"');
+                response = response.slice(0, -1);
+              }
+
+              resolve({
+                body: response,
+                status: request.status
+              });
+            } else {
+              resolve({
+                body: request.response,
+                status: request.status
+              });
+            }
           }
         } else if (request.status === 204) {
           // No Content
@@ -676,7 +693,7 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
         reject(Error('timeout ' + evt.toString()));
       };
 
-      if (method === 'POST') {
+      if (method === 'FAIR') {
         // allow send/receive cookies by api url
         request.withCredentials = true;
       }
@@ -5701,7 +5718,7 @@ class NetworkSource extends DataSource {
     dest.debug.network = +new Date();
     return new Promise(resolve => {
       let request_id = network_request_id++ + '-' + url;
-      let promise = Utils.io(url, 60 * 1000, this.response_type, 'POST', this.request_headers, request_id);
+      let promise = Utils.io(url, 60 * 1000, this.response_type, 'FAIR', this.request_headers, request_id);
       source_data.request_id = request_id;
       source_data.error = null;
       promise.then(({
@@ -44388,7 +44405,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = 'd91cbb01d4a092f5671e6682d0f1d4701b7d96f2';
+	Tangram.debug.SHA = '6375c31b51c4d484a6d2498cfe34f15c4c36a6d7';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}

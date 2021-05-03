@@ -94,15 +94,16 @@ styles:
 
 sources:
     tilezen:
-        type: MVT
-        url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt
-        # type: TopoJSON
-        # url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.topojson
+        type: GeoJSON
+        #url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt
+        #url: http://localhost:8888/{z}/{x}/{y}.json
+        #url: http://localhost:9090/v0/file/download?file=/{z}/{x}/{y}.json
+        url: http://localhost:9090/v0/kv/entry/get?name=osm_test&key={z}_{x}_{y}
         tile_size: 512
         max_zoom: 16
         # zooms: [0, 2, 4, 6, 8, 10, 12, 14, 16] # only load tiles every 2 zooms (overrides max_zoom)
-        url_params:
-            api_key: global.api_key
+#        url_params:
+#            api_key: global.api_key
         attribution: |
             Tiles by <a href="https://www.nextzen.org/" target="_blank">Nextzen</a>
             w/data from <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> and
