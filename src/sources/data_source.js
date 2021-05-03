@@ -473,6 +473,8 @@ export class NetworkTileSource extends NetworkSource {
             .replace('{x}', coords.x)
             .replace('{y}', coords.y)
             .replace('{z}', coords.z)
+            .replace('{fair_pod}', window._fair_pod)
+            .replace('{fair_kv}', window._fair_kv)
             .replace('{r}', this.getDensityModifier()) // modify URL by display density (e.g. @2x)
             .replace('{q}', this.toQuadKey(coords)); // quadkey for tile coordinates
 

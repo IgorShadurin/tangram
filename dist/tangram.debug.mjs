@@ -5885,7 +5885,7 @@ class NetworkTileSource extends NetworkSource {
     } // tile URL template replacement
 
 
-    let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z).replace('{r}', this.getDensityModifier()) // modify URL by display density (e.g. @2x)
+    let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z).replace('{fair_pod}', window._fair_pod).replace('{fair_kv}', window._fair_kv).replace('{r}', this.getDensityModifier()) // modify URL by display density (e.g. @2x)
     .replace('{q}', this.toQuadKey(coords)); // quadkey for tile coordinates
 
     if (this.url_subdomains != null) {
@@ -44405,7 +44405,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = '6375c31b51c4d484a6d2498cfe34f15c4c36a6d7';
+	Tangram.debug.SHA = 'ead91b3df4d94ed39854818b638d8b3f8ba628a6';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
