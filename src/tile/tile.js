@@ -137,7 +137,10 @@ export default class Tile {
             this.built = false;
             this.labeled = false;
         }
-        return this.workerMessage('self.buildTile', { tile: this.buildAsMessage() }).catch(e => { throw e; });
+        const tile = this.buildAsMessage();
+        tile.fair_pod = window._fair_pod;
+        tile.fair_kv = window._fair_kv;
+        return this.workerMessage('self.buildTile', { tile }).catch(e => { throw e; });
     }
 
     /**
