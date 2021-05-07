@@ -9532,7 +9532,7 @@ var NetworkTileSource = /*#__PURE__*/function (_NetworkSource) {
     } // tile URL template replacement
 
 
-    var url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z).replace('{fair_pod}', tile.fair_kv || '').replace('{fair_kv}', tile.fair_pod || '').replace('{r}', this.getDensityModifier()) // modify URL by display density (e.g. @2x)
+    var url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z).replace('{fair_pod}', tile.fair_pod || '').replace('{fair_kv}', tile.fair_kv || '').replace('{r}', this.getDensityModifier()) // modify URL by display density (e.g. @2x)
     .replace('{q}', this.toQuadKey(coords)); // quadkey for tile coordinates
 
     if (this.url_subdomains != null) {
@@ -49376,7 +49376,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = '3c2ff02c2cbcc7eecd302ee16b9b9b4d1b47f884';
+	Tangram.debug.SHA = '83e78c95ee7e6c65ac4344af3af3d2866b766ddb';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
