@@ -44415,7 +44415,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = '44eefc904c0fa822cb722a4120625bad9d2817a1';
+	Tangram.debug.SHA = 'b640cf036e4fad121d0491d0a928d6f0b2ea3949';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}

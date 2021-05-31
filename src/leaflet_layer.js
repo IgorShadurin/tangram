@@ -3,16 +3,16 @@ import Scene from './scene/scene';
 import Geo from './utils/geo';
 import debounce from './utils/debounce';
 import {mergeDebugSettings} from './utils/debug_settings';
-// import Utils from './utils/utils';
+import Utils from './utils/utils';
 
 // Exports must appear outside a function, but will only be defined in main thread (below)
 export var LeafletLayer;
 export function leafletLayer(options) {
     return extendLeaflet(options);
 }
-// export function setFairData(data){
-//     Utils.setFairData(data);
-// }
+export function setFairData(data){
+    Utils.setFairData(data);
+}
 
 // save references to overloaded Leaflet methods
 const originalHandlers = {
