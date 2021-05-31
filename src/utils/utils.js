@@ -26,8 +26,12 @@ Utils._requests = {};       // XHR requests on current thread
 Utils._proxy_requests = {}; // XHR requests proxied to main thread
 Utils._fairData = {};
 
-Utils.setFairData = function(data){
+Utils._setFairData = function(data){
     Utils._fairData = data;
+};
+
+Utils.setFairData = function(data){
+    return WorkerBroker.postMessage('Utils._setFairData', data);
 };
 
 // `request_key` is a user-provided key that can be later used to cancel the request

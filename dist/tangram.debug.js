@@ -2767,8 +2767,12 @@ Utils._proxy_requests = {}; // XHR requests proxied to main thread
 
 Utils._fairData = {};
 
-Utils.setFairData = function (data) {
+Utils._setFairData = function (data) {
   Utils._fairData = data;
+};
+
+Utils.setFairData = function (data) {
+  return WorkerBroker$1.postMessage('Utils._setFairData', data);
 }; // `request_key` is a user-provided key that can be later used to cancel the request
 
 
@@ -49386,7 +49390,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = '76641306211c21b2c16cb6f0fea4b24e0fa83204';
+	Tangram.debug.SHA = '781bc99719a73934ed78e2548ceecca3b94a2e94';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
