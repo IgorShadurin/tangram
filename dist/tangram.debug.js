@@ -2764,7 +2764,13 @@ Utils.isMicrosoft = function () {
 Utils._requests = {}; // XHR requests on current thread
 
 Utils._proxy_requests = {}; // XHR requests proxied to main thread
-// `request_key` is a user-provided key that can be later used to cancel the request
+
+Utils._fairData = {};
+
+Utils.setFairData = function (data) {
+  Utils._fairData = data;
+}; // `request_key` is a user-provided key that can be later used to cancel the request
+
 
 Utils.io = function (url, timeout, responseType, method, headers, request_key, proxy) {
   if (timeout === void 0) {
@@ -2803,6 +2809,7 @@ Utils.io = function (url, timeout, responseType, method, headers, request_key, p
 
     return WorkerBroker$1.postMessage('Utils.io', url, timeout, responseType, method, headers, request_key, true);
   } else {
+    console.log('fairdata', Utils._fairData);
     var request = new XMLHttpRequest();
     var promise = new Promise(function (resolve, reject) {
       request.open(method === 'FAIR' ? 'GET' : method, url, true);
@@ -48734,7 +48741,7 @@ function debounce(func, wait) {
 var LeafletLayer;
 function leafletLayer(options) {
   return extendLeaflet(options);
-} // save references to overloaded Leaflet methods
+}
 
 var originalHandlers = {
   map: {},
@@ -49376,7 +49383,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = '83e78c95ee7e6c65ac4344af3af3d2866b766ddb';
+	Tangram.debug.SHA = '44eefc904c0fa822cb722a4120625bad9d2817a1';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}

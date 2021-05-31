@@ -98,7 +98,7 @@ sources:
         #url: https://tile.nextzen.org/tilezen/vector/v1/512/all/{z}/{x}/{y}.mvt
         #url: http://localhost:8888/{z}/{x}/{y}.json
         #url: http://localhost:9090/v0/file/download?file=/{z}/{x}/{y}.json
-        url: http://localhost:9090/v0/kv/entry/get?name={fair_kv}&key={z}_{x}_{y}
+        url: http://localhost:9090/v0/kv/entry/get?table_name={fair_kv}&key={z}_{x}_{y}
         tile_size: 512
         max_zoom: 16
         # zooms: [0, 2, 4, 6, 8, 10, 12, 14, 16] # only load tiles every 2 zooms (overrides max_zoom)
