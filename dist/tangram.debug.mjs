@@ -625,7 +625,11 @@ Utils._setFairData = function (data) {
 };
 
 Utils.setFairData = function (data) {
-  return WorkerBroker$1.postMessage('Utils._setFairData', data);
+  if (Thread.is_worker) {
+    return WorkerBroker$1.postMessage('Utils._setFairData', data);
+  } else {
+    console.log('not Thread.is_worker');
+  }
 }; // `request_key` is a user-provided key that can be later used to cancel the request
 
 
@@ -44423,7 +44427,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = '781bc99719a73934ed78e2548ceecca3b94a2e94';
+	Tangram.debug.SHA = '71c49ebcf8dc9be16174c27d2f710bd4d8986755';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
