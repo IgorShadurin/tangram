@@ -10,9 +10,6 @@ export var LeafletLayer;
 export function leafletLayer(options) {
     return extendLeaflet(options);
 }
-export function setFairData(data){
-    Utils.setFairData(data);
-}
 
 // save references to overloaded Leaflet methods
 const originalHandlers = {
@@ -190,6 +187,10 @@ function extendLeaflet(options) {
                 }).catch(error => {
                     this.fire('error', error);
                 });
+            },
+
+            setFairData(data) {
+                Utils.setFairData(data);
             },
 
             onRemove (map) {

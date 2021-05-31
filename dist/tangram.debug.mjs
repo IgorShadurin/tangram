@@ -43782,7 +43782,7 @@ function debounce(func, wait) {
 var LeafletLayer;
 function leafletLayer(options) {
   return extendLeaflet(options);
-}
+} // save references to overloaded Leaflet methods
 
 const originalHandlers = {
   map: {},
@@ -43954,6 +43954,10 @@ function extendLeaflet(options) {
         }).catch(error => {
           this.fire('error', error);
         });
+      },
+
+      setFairData(data) {
+        sources.Utils.setFairData(data);
       },
 
       onRemove(map) {
@@ -44415,7 +44419,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = 'b640cf036e4fad121d0491d0a928d6f0b2ea3949';
+	Tangram.debug.SHA = '76641306211c21b2c16cb6f0fea4b24e0fa83204';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
