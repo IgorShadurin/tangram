@@ -24,19 +24,6 @@ Utils.isMicrosoft = function () {
 
 Utils._requests = {};       // XHR requests on current thread
 Utils._proxy_requests = {}; // XHR requests proxied to main thread
-Utils._fairData = {};
-
-Utils._setFairData = function(data){
-    Utils._fairData = data;
-};
-
-Utils.setFairData = function(data) {
-    if(Thread.is_worker){
-        return WorkerBroker.postMessage('Utils._setFairData', data);
-    }else{
-        console.log('not Thread.is_worker');
-    }
-};
 
 // `request_key` is a user-provided key that can be later used to cancel the request
 Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}, request_key = null, proxy = false) {
@@ -52,7 +39,6 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
         return WorkerBroker.postMessage('Utils.io', url, timeout, responseType, method, headers, request_key, true);
     }
     else {
-        console.log('fairdata',Utils._fairData);
         var request = new XMLHttpRequest();
         var promise = new Promise((resolve, reject) => {
             request.open(method === 'FAIR' ? 'GET' : method, url, true);

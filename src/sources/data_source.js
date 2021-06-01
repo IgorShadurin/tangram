@@ -468,15 +468,33 @@ export class NetworkTileSource extends NetworkSource {
             coords.y = Math.pow(2, coords.z) - 1 - coords.y; // optionally flip tile coords for TMS
         }
 
+        let pod = '';
+        let kv = '';
+        const fairData = tile.fair_data;
+        console.log('fairData', fairData);
+        const {z, x, y} = coords;
+        console.log(z, x, y);
+        fairData.pods.forEach(item => {
+            const index = item.index;
+            if (index[z] && index[z][x] && index[z][x][y]) {
+                console.log('found!');
+                pod = item.pod;
+                kv = item.kv;
+            }
+        });
         // tile URL template replacement
         let url = url_template
             .replace('{x}', coords.x)
             .replace('{y}', coords.y)
             .replace('{z}', coords.z)
-            .replace('{fair_pod}', tile.fair_pod || '')
-            .replace('{fair_kv}', tile.fair_kv || '')
+            .replace('{fair_pod}', pod)
+            .replace('{fair_kv}', kv)
             .replace('{r}', this.getDensityModifier()) // modify URL by display density (e.g. @2x)
             .replace('{q}', this.toQuadKey(coords)); // quadkey for tile coordinates
+
+        if (!pod && !kv && fairData.urlNotFound) {
+            url = fairData.urlNotFound;
+        }
 
         if (this.url_subdomains != null) {
             url = url.replace('{s}', this.url_subdomains[this.next_url_subdomain]);

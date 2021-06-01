@@ -138,8 +138,7 @@ export default class Tile {
             this.labeled = false;
         }
         const tile = this.buildAsMessage();
-        tile.fair_pod = window._fair_pod;
-        tile.fair_kv = window._fair_kv;
+        tile.fair_data = window._fair_data;
         return this.workerMessage('self.buildTile', { tile }).catch(e => { throw e; });
     }
 

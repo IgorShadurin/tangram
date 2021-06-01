@@ -617,21 +617,7 @@ Utils.isMicrosoft = function () {
 Utils._requests = {}; // XHR requests on current thread
 
 Utils._proxy_requests = {}; // XHR requests proxied to main thread
-
-Utils._fairData = {};
-
-Utils._setFairData = function (data) {
-  Utils._fairData = data;
-};
-
-Utils.setFairData = function (data) {
-  if (Thread.is_worker) {
-    return WorkerBroker$1.postMessage('Utils._setFairData', data);
-  } else {
-    console.log('not Thread.is_worker');
-  }
-}; // `request_key` is a user-provided key that can be later used to cancel the request
-
+// `request_key` is a user-provided key that can be later used to cancel the request
 
 Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET', headers = {}, request_key = null, proxy = false) {
   if (Thread.is_worker && Utils.isMicrosoft()) {
@@ -646,7 +632,6 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
 
     return WorkerBroker$1.postMessage('Utils.io', url, timeout, responseType, method, headers, request_key, true);
   } else {
-    console.log('fairdata', Utils._fairData);
     var request = new XMLHttpRequest();
     var promise = new Promise((resolve, reject) => {
       request.open(method === 'FAIR' ? 'GET' : method, url, true);
@@ -5897,11 +5882,34 @@ class NetworkTileSource extends NetworkSource {
 
     if (this.tms) {
       coords.y = Math.pow(2, coords.z) - 1 - coords.y; // optionally flip tile coords for TMS
-    } // tile URL template replacement
+    }
 
+    let pod = '';
+    let kv = '';
+    const fairData = tile.fair_data;
+    console.log('fairData', fairData);
+    const {
+      z,
+      x,
+      y
+    } = coords;
+    console.log(z, x, y);
+    fairData.pods.forEach(item => {
+      const index = item.index;
 
-    let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z).replace('{fair_pod}', tile.fair_pod || '').replace('{fair_kv}', tile.fair_kv || '').replace('{r}', this.getDensityModifier()) // modify URL by display density (e.g. @2x)
+      if (index[z] && index[z][x] && index[z][x][y]) {
+        console.log('found!');
+        pod = item.pod;
+        kv = item.kv;
+      }
+    }); // tile URL template replacement
+
+    let url = url_template.replace('{x}', coords.x).replace('{y}', coords.y).replace('{z}', coords.z).replace('{fair_pod}', pod).replace('{fair_kv}', kv).replace('{r}', this.getDensityModifier()) // modify URL by display density (e.g. @2x)
     .replace('{q}', this.toQuadKey(coords)); // quadkey for tile coordinates
+
+    if (!pod && !kv && fairData.urlNotFound) {
+      url = fairData.urlNotFound;
+    }
 
     if (this.url_subdomains != null) {
       url = url.replace('{s}', this.url_subdomains[this.next_url_subdomain]);
@@ -17131,8 +17139,7 @@ class Tile {
     }
 
     const tile = this.buildAsMessage();
-    tile.fair_pod = window._fair_pod;
-    tile.fair_kv = window._fair_kv;
+    tile.fair_data = window._fair_data;
     return this.workerMessage('self.buildTile', {
       tile
     }).catch(e => {
@@ -44427,7 +44434,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = '71c49ebcf8dc9be16174c27d2f710bd4d8986755';
+	Tangram.debug.SHA = '44a449276425b7e4415f639173d45085a46de683';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
