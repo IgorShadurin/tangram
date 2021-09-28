@@ -208,78 +208,78 @@ function setupMainThread() {
       // and send any return value back to the worker
       // Unique id for this message & return call to main thread
       else if (data.type === 'worker_send' && id != null) {
-          // Call the requested method and save the return value
-          let result, error, target, method_name, method;
+        // Call the requested method and save the return value
+        let result, error, target, method_name, method;
 
-          try {
-            [method_name, target] = findTarget(data.method);
+        try {
+          [method_name, target] = findTarget(data.method);
 
-            if (!target) {
-              throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
+          if (!target) {
+            throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
+          }
+
+          method = typeof target[method_name] === 'function' && target[method_name];
+
+          if (!method) {
+            throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because object has no method with that name`);
+          }
+
+          result = method.apply(target, data.message);
+        } catch (e) {
+          // Thrown errors will be passed back (in string form) to worker
+          error = e;
+        } // Send return value to worker
+
+
+        let payload,
+            transferables = []; // Async result
+
+        if (result instanceof Promise) {
+          result.then(value => {
+            if (value instanceof WorkerBroker.withTransferables) {
+              transferables = value.transferables;
+              value = value.value[0];
             }
 
-            method = typeof target[method_name] === 'function' && target[method_name];
+            payload = {
+              type: 'main_reply',
+              message_id: id,
+              message: value
+            };
+            worker.postMessage(payload, transferables.map(t => t.object));
+            freeTransferables(transferables);
 
-            if (!method) {
-              throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because object has no method with that name`);
+            if (transferables.length > 0) {
+              log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
             }
-
-            result = method.apply(target, data.message);
-          } catch (e) {
-            // Thrown errors will be passed back (in string form) to worker
-            error = e;
-          } // Send return value to worker
-
-
-          let payload,
-              transferables = []; // Async result
-
-          if (result instanceof Promise) {
-            result.then(value => {
-              if (value instanceof WorkerBroker.withTransferables) {
-                transferables = value.transferables;
-                value = value.value[0];
-              }
-
-              payload = {
-                type: 'main_reply',
-                message_id: id,
-                message: value
-              };
-              worker.postMessage(payload, transferables.map(t => t.object));
-              freeTransferables(transferables);
-
-              if (transferables.length > 0) {
-                log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
-              }
-            }, error => {
-              worker.postMessage({
-                type: 'main_reply',
-                message_id: id,
-                error: error instanceof Error ? `${error.message}: ${error.stack}` : error
-              });
+          }, error => {
+            worker.postMessage({
+              type: 'main_reply',
+              message_id: id,
+              error: error instanceof Error ? `${error.message}: ${error.stack}` : error
             });
-          } // Immediate result
-          else {
-              if (result instanceof WorkerBroker.withTransferables) {
-                transferables = result.transferables;
-                result = result.value[0];
-              }
+          });
+        } // Immediate result
+        else {
+          if (result instanceof WorkerBroker.withTransferables) {
+            transferables = result.transferables;
+            result = result.value[0];
+          }
 
-              payload = {
-                type: 'main_reply',
-                message_id: id,
-                message: result,
-                error: error instanceof Error ? `${error.message}: ${error.stack}` : error
-              };
-              worker.postMessage(payload, transferables.map(t => t.object));
-              freeTransferables(transferables);
+          payload = {
+            type: 'main_reply',
+            message_id: id,
+            message: result,
+            error: error instanceof Error ? `${error.message}: ${error.stack}` : error
+          };
+          worker.postMessage(payload, transferables.map(t => t.object));
+          freeTransferables(transferables);
 
-              if (transferables.length > 0) {
-                log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
-              }
-            }
+          if (transferables.length > 0) {
+            log('trace', `'${method_name}' transferred ${transferables.length} objects to worker thread`);
+          }
         }
+      }
     });
   }; // Expose for debugging
 
@@ -374,78 +374,78 @@ function setupWorkerThread() {
     } // Receive messages from main thread, dispatch them, and send back a reply
     // Unique id for this message & return call to main thread
     else if (data.type === 'main_send' && id != null) {
-        // Call the requested worker method and save the return value
-        let result, error, target, method_name, method;
+      // Call the requested worker method and save the return value
+      let result, error, target, method_name, method;
 
-        try {
-          [method_name, target] = findTarget(data.method);
+      try {
+        [method_name, target] = findTarget(data.method);
 
-          if (!target) {
-            throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
+        if (!target) {
+          throw Error(`Worker broker could not dispatch message type ${data.method} on target ${data.target} because no object with that name is registered on main thread`);
+        }
+
+        method = typeof target[method_name] === 'function' && target[method_name];
+
+        if (!method) {
+          throw Error(`Worker broker could not dispatch message type ${data.method} because worker has no method with that name`);
+        }
+
+        result = method.apply(target, data.message);
+      } catch (e) {
+        // Thrown errors will be passed back (in string form) to main thread
+        error = e;
+      } // Send return value to main thread
+
+
+      let payload,
+          transferables = []; // Async result
+
+      if (result instanceof Promise) {
+        result.then(value => {
+          if (value instanceof WorkerBroker.withTransferables) {
+            transferables = value.transferables;
+            value = value.value[0];
           }
 
-          method = typeof target[method_name] === 'function' && target[method_name];
+          payload = {
+            type: 'worker_reply',
+            message_id: id,
+            message: value
+          };
+          self.postMessage(payload, transferables.map(t => t.object));
+          freeTransferables(transferables);
 
-          if (!method) {
-            throw Error(`Worker broker could not dispatch message type ${data.method} because worker has no method with that name`);
+          if (transferables.length > 0) {
+            log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
           }
-
-          result = method.apply(target, data.message);
-        } catch (e) {
-          // Thrown errors will be passed back (in string form) to main thread
-          error = e;
-        } // Send return value to main thread
-
-
-        let payload,
-            transferables = []; // Async result
-
-        if (result instanceof Promise) {
-          result.then(value => {
-            if (value instanceof WorkerBroker.withTransferables) {
-              transferables = value.transferables;
-              value = value.value[0];
-            }
-
-            payload = {
-              type: 'worker_reply',
-              message_id: id,
-              message: value
-            };
-            self.postMessage(payload, transferables.map(t => t.object));
-            freeTransferables(transferables);
-
-            if (transferables.length > 0) {
-              log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
-            }
-          }, error => {
-            self.postMessage({
-              type: 'worker_reply',
-              message_id: id,
-              error: error instanceof Error ? `${error.message}: ${error.stack}` : error
-            });
+        }, error => {
+          self.postMessage({
+            type: 'worker_reply',
+            message_id: id,
+            error: error instanceof Error ? `${error.message}: ${error.stack}` : error
           });
-        } // Immediate result
-        else {
-            if (result instanceof WorkerBroker.withTransferables) {
-              transferables = result.transferables;
-              result = result.value[0];
-            }
+        });
+      } // Immediate result
+      else {
+        if (result instanceof WorkerBroker.withTransferables) {
+          transferables = result.transferables;
+          result = result.value[0];
+        }
 
-            payload = {
-              type: 'worker_reply',
-              message_id: id,
-              message: result,
-              error: error instanceof Error ? `${error.message}: ${error.stack}` : error
-            };
-            self.postMessage(payload, transferables.map(t => t.object));
-            freeTransferables(transferables);
+        payload = {
+          type: 'worker_reply',
+          message_id: id,
+          message: result,
+          error: error instanceof Error ? `${error.message}: ${error.stack}` : error
+        };
+        self.postMessage(payload, transferables.map(t => t.object));
+        freeTransferables(transferables);
 
-            if (transferables.length > 0) {
-              log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
-            }
-          }
+        if (transferables.length > 0) {
+          log('trace', `'${method_name}' transferred ${transferables.length} objects to main thread`);
+        }
       }
+    }
   });
 } // Special value wrapper, to indicate that we want to find and include transferable objects in the message
 
@@ -483,17 +483,17 @@ function findTransferables(source, parent = null, property = null, list = []) {
       });
     } // Or looks like a typed array (has an array buffer property)?
     else if (source.buffer instanceof ArrayBuffer) {
-        list.push({
-          object: source.buffer,
-          parent,
-          property
-        });
-      } // Otherwise check each property
-      else {
-          for (let prop in source) {
-            findTransferables(source[prop], source, prop, list);
-          }
-        }
+      list.push({
+        object: source.buffer,
+        parent,
+        property
+      });
+    } // Otherwise check each property
+    else {
+      for (let prop in source) {
+        findTransferables(source[prop], source, prop, list);
+      }
+    }
   }
 
   return list;
@@ -809,50 +809,50 @@ Utils.interpolate = function (x, points, transform) {
     }
   } // Max bounds
   else if (x >= points[points.length - 1][0]) {
-      y = points[points.length - 1][1];
+    y = points[points.length - 1][1];
 
-      if (typeof transform === 'function') {
-        y = transform(y);
-      }
-    } // Find which control points x is between
-    else {
-        for (var i = 0; i < points.length - 1; i++) {
-          if (x >= points[i][0] && x < points[i + 1][0]) {
-            // Linear interpolation
-            x1 = points[i][0];
-            x2 = points[i + 1][0]; // Multiple values
+    if (typeof transform === 'function') {
+      y = transform(y);
+    }
+  } // Find which control points x is between
+  else {
+    for (var i = 0; i < points.length - 1; i++) {
+      if (x >= points[i][0] && x < points[i + 1][0]) {
+        // Linear interpolation
+        x1 = points[i][0];
+        x2 = points[i + 1][0]; // Multiple values
 
-            if (Array.isArray(points[i][1])) {
-              y = [];
+        if (Array.isArray(points[i][1])) {
+          y = [];
 
-              for (var c = 0; c < points[i][1].length; c++) {
-                if (typeof transform === 'function') {
-                  y1 = transform(points[i][1][c]);
-                  y2 = transform(points[i + 1][1][c]);
-                  d = y2 - y1;
-                  y[c] = d * (x - x1) / (x2 - x1) + y1;
-                } else {
-                  d = points[i + 1][1][c] - points[i][1][c];
-                  y[c] = d * (x - x1) / (x2 - x1) + points[i][1][c];
-                }
-              }
-            } // Single value
-            else {
-                if (typeof transform === 'function') {
-                  y1 = transform(points[i][1]);
-                  y2 = transform(points[i + 1][1]);
-                  d = y2 - y1;
-                  y = d * (x - x1) / (x2 - x1) + y1;
-                } else {
-                  d = points[i + 1][1] - points[i][1];
-                  y = d * (x - x1) / (x2 - x1) + points[i][1];
-                }
-              }
-
-            break;
+          for (var c = 0; c < points[i][1].length; c++) {
+            if (typeof transform === 'function') {
+              y1 = transform(points[i][1][c]);
+              y2 = transform(points[i + 1][1][c]);
+              d = y2 - y1;
+              y[c] = d * (x - x1) / (x2 - x1) + y1;
+            } else {
+              d = points[i + 1][1][c] - points[i][1][c];
+              y[c] = d * (x - x1) / (x2 - x1) + points[i][1][c];
+            }
+          }
+        } // Single value
+        else {
+          if (typeof transform === 'function') {
+            y1 = transform(points[i][1]);
+            y2 = transform(points[i + 1][1]);
+            d = y2 - y1;
+            y = d * (x - x1) / (x2 - x1) + y1;
+          } else {
+            d = points[i + 1][1] - points[i][1];
+            y = d * (x - x1) / (x2 - x1) + points[i][1];
           }
         }
+
+        break;
       }
+    }
+  }
 
   return y;
 };
@@ -1504,13 +1504,13 @@ class Texture {
       this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, source);
     } // Raw image buffer
     else {
-        // these pixel store params are deprecated for non-DOM element uploads
-        // (e.g. when creating texture from raw data)
-        // setting them to null avoids a Firefox warning
-        this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, null);
-        this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, null);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, source);
-      }
+      // these pixel store params are deprecated for non-DOM element uploads
+      // (e.g. when creating texture from raw data)
+      // setting them to null avoids a Firefox warning
+      this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, null);
+      this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, null);
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, source);
+    }
 
     Texture.trigger('update', this);
   } // Determines appropriate filtering mode
@@ -1829,75 +1829,75 @@ GLSL.parseUniforms = function (uniforms = {}) {
       });
     } // Array: vector, array of floats, array of textures
     else if (Array.isArray(uniform)) {
-        // Numeric values
-        if (typeof uniform[0] === 'number') {
-          // float vectors (vec2, vec3, vec4)
-          if (uniform.length >= 2 && uniform.length <= 4) {
-            parsed.push({
-              type: 'vec' + uniform.length,
-              method: uniform.length + 'fv',
-              name,
-              value: uniform,
-              path: [name]
-            });
-          } // float array
-          else if (uniform.length > 4) {
-              parsed.push({
-                type: 'float[]',
-                method: '1fv',
-                name: name + '[0]',
-                value: uniform,
-                path: [name]
-              });
-            } // TODO: assume matrix for (typeof == Float32Array && length == 16)?
-
-        } // Array of textures
-        else if (typeof uniform[0] === 'string') {
-            for (let u = 0; u < uniform.length; u++) {
-              parsed.push({
-                type: 'sampler2D',
-                method: '1i',
-                name: name + '[' + u + ']',
-                value: uniform[u],
-                path: [name, u]
-              });
-            }
-          } // Array of arrays - but only arrays of vectors are allowed in this case
-          else if (Array.isArray(uniform[0]) && typeof uniform[0][0] === 'number') {
-              // float vectors (vec2, vec3, vec4)
-              if (uniform[0].length >= 2 && uniform[0].length <= 4) {
-                // Set each vector in the array
-                for (let u = 0; u < uniform.length; u++) {
-                  parsed.push({
-                    type: 'vec' + uniform[0].length,
-                    method: uniform[0].length + 'fv',
-                    name: name + '[' + u + ']',
-                    value: uniform[u],
-                    path: [name, u]
-                  });
-                }
-              }
-            } // TODO: else warning
-
-      } // Boolean
-      else if (typeof uniform === 'boolean') {
+      // Numeric values
+      if (typeof uniform[0] === 'number') {
+        // float vectors (vec2, vec3, vec4)
+        if (uniform.length >= 2 && uniform.length <= 4) {
           parsed.push({
-            type: 'bool',
-            method: '1i',
+            type: 'vec' + uniform.length,
+            method: uniform.length + 'fv',
             name,
             value: uniform,
             path: [name]
           });
-        } // Texture
-        else if (typeof uniform === 'string') {
+        } // float array
+        else if (uniform.length > 4) {
+          parsed.push({
+            type: 'float[]',
+            method: '1fv',
+            name: name + '[0]',
+            value: uniform,
+            path: [name]
+          });
+        } // TODO: assume matrix for (typeof == Float32Array && length == 16)?
+
+      } // Array of textures
+      else if (typeof uniform[0] === 'string') {
+        for (let u = 0; u < uniform.length; u++) {
+          parsed.push({
+            type: 'sampler2D',
+            method: '1i',
+            name: name + '[' + u + ']',
+            value: uniform[u],
+            path: [name, u]
+          });
+        }
+      } // Array of arrays - but only arrays of vectors are allowed in this case
+      else if (Array.isArray(uniform[0]) && typeof uniform[0][0] === 'number') {
+        // float vectors (vec2, vec3, vec4)
+        if (uniform[0].length >= 2 && uniform[0].length <= 4) {
+          // Set each vector in the array
+          for (let u = 0; u < uniform.length; u++) {
             parsed.push({
-              type: 'sampler2D',
-              method: '1i',
-              name,
-              value: uniform,
-              path: [name]
+              type: 'vec' + uniform[0].length,
+              method: uniform[0].length + 'fv',
+              name: name + '[' + u + ']',
+              value: uniform[u],
+              path: [name, u]
             });
           }
+        }
+      } // TODO: else warning
+
+    } // Boolean
+    else if (typeof uniform === 'boolean') {
+      parsed.push({
+        type: 'bool',
+        method: '1i',
+        name,
+        value: uniform,
+        path: [name]
+      });
+    } // Texture
+    else if (typeof uniform === 'string') {
+      parsed.push({
+        type: 'sampler2D',
+        method: '1i',
+        name,
+        value: uniform,
+        path: [name]
+      });
+    }
   }
 
   return parsed;
@@ -1914,39 +1914,39 @@ GLSL.defineVariable = function (name, value) {
     type = 'float';
   } // Multiple floats - vector or array
   else if (Array.isArray(value)) {
-      // Numeric values
-      if (typeof value[0] === 'number') {
-        // float vectors (vec2, vec3, vec4)
-        if (value.length >= 2 && value.length <= 4) {
-          type = 'vec' + value.length;
-        } // float array
-        else {
-            //if (value.length > 4) {
-            type = 'float';
-            array = value.length;
-          } // TODO: assume matrix for (typeof == Float32Array && length == 16)?
+    // Numeric values
+    if (typeof value[0] === 'number') {
+      // float vectors (vec2, vec3, vec4)
+      if (value.length >= 2 && value.length <= 4) {
+        type = 'vec' + value.length;
+      } // float array
+      else {
+        //if (value.length > 4) {
+        type = 'float';
+        array = value.length;
+      } // TODO: assume matrix for (typeof == Float32Array && length == 16)?
 
-      } // Array of textures
-      else if (typeof value[0] === 'string') {
-          type = 'sampler2D';
-          array = value.length;
-        } // Array of arrays - but only arrays of vectors are allowed in this case
-        else if (Array.isArray(value[0]) && typeof value[0][0] === 'number') {
-            // float vectors (vec2, vec3, vec4)
-            if (value[0].length >= 2 && value[0].length <= 4) {
-              type = 'vec' + value[0].length;
-              array = value.length;
-            }
-          }
-    } // Boolean
-    else if (typeof value === 'boolean') {
-        type = 'bool';
-      } // Texture
-      else if (typeof value === 'string') {
-          type = 'sampler2D';
-        } else {
-          return; // no valid type found
-        } // Construct variable definition
+    } // Array of textures
+    else if (typeof value[0] === 'string') {
+      type = 'sampler2D';
+      array = value.length;
+    } // Array of arrays - but only arrays of vectors are allowed in this case
+    else if (Array.isArray(value[0]) && typeof value[0][0] === 'number') {
+      // float vectors (vec2, vec3, vec4)
+      if (value[0].length >= 2 && value[0].length <= 4) {
+        type = 'vec' + value[0].length;
+        array = value.length;
+      }
+    }
+  } // Boolean
+  else if (typeof value === 'boolean') {
+    type = 'bool';
+  } // Texture
+  else if (typeof value === 'string') {
+    type = 'sampler2D';
+  } else {
+    return; // no valid type found
+  } // Construct variable definition
 
 
   var variable = '';
@@ -2940,8 +2940,8 @@ function mergeObjects(dest, ...sources) {
       } // Overwrite the previous destination value if the source property is: a scalar (number/string),
       // an array, or a null value
       else if (value !== undefined) {
-          dest[key] = value;
-        } // Undefined source properties are ignored
+        dest[key] = value;
+      } // Undefined source properties are ignored
 
     }
   }
@@ -3301,10 +3301,10 @@ function compileFunctionStrings(obj, wrap) {
     obj = compileFunctionString(obj, wrap);
   } // Loop through object properties
   else if (obj != null && typeof obj === 'object') {
-      for (let p in obj) {
-        obj[p] = compileFunctionStrings(obj[p], wrap);
-      }
+    for (let p in obj) {
+      obj[p] = compileFunctionStrings(obj[p], wrap);
     }
+  }
 
   return obj;
 } // Compile a string that looks like a function
@@ -3876,15 +3876,15 @@ StyleParser.evalCachedProperty = function (val, context) {
       return tryEval(val.dynamic, context);
     } // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
     else if (Array.isArray(val.value) && Array.isArray(val.value[0])) {
-        // Calculate value for current zoom
-        val.zoom = val.zoom || {};
-        val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value);
-        return val.zoom[context.zoom];
-      } // Single static value
-      else {
-          val.static = val.value;
-          return val.static;
-        }
+      // Calculate value for current zoom
+      val.zoom = val.zoom || {};
+      val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value);
+      return val.zoom[context.zoom];
+    } // Single static value
+    else {
+      val.static = val.value;
+      return val.static;
+    }
   }
 };
 
@@ -3899,22 +3899,22 @@ StyleParser.convertUnits = function (val, context) {
     return val.value;
   } // un-parsed unit string
   else if (typeof val === 'string') {
-      if (val.trim().slice(-2) === 'px') {
-        val = parseNumber(val);
-        val *= Geo$1.metersPerPixel(context.zoom); // convert from pixels
-      } else {
-        val = parseNumber(val);
-      }
-    } // multiple values or stops
-    else if (Array.isArray(val)) {
-        // Array of arrays, e.g. zoom-interpolated stops
-        if (Array.isArray(val[0])) {
-          return val.map(v => [v[0], StyleParser.convertUnits(v[1], context)]);
-        } // Array of values
-        else {
-            return val.map(v => StyleParser.convertUnits(v, context));
-          }
-      }
+    if (val.trim().slice(-2) === 'px') {
+      val = parseNumber(val);
+      val *= Geo$1.metersPerPixel(context.zoom); // convert from pixels
+    } else {
+      val = parseNumber(val);
+    }
+  } // multiple values or stops
+  else if (Array.isArray(val)) {
+    // Array of arrays, e.g. zoom-interpolated stops
+    if (Array.isArray(val[0])) {
+      return val.map(v => [v[0], StyleParser.convertUnits(v[1], context)]);
+    } // Array of values
+    else {
+      return val.map(v => StyleParser.convertUnits(v, context));
+    }
+  }
 
   return val;
 }; // Pre-parse units from string values
@@ -3949,13 +3949,13 @@ StyleParser.evalCachedDistanceProperty = function (val, context) {
       return tryEval(val.dynamic, context);
     } // Array of zoom-interpolated stops, e.g. [zoom, value] pairs
     else if (val.zoom) {
-        // Calculate value for current zoom
-        // Do final unit conversion as late as possible, when interpolation values have been determined
-        val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value, v => StyleParser.convertUnits(v, context));
-        return val.zoom[context.zoom];
-      } else {
-        return StyleParser.convertUnits(val.value, context);
-      }
+      // Calculate value for current zoom
+      // Do final unit conversion as late as possible, when interpolation values have been determined
+      val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value, v => StyleParser.convertUnits(v, context));
+      return val.zoom[context.zoom];
+    } else {
+      return StyleParser.convertUnits(val.value, context);
+    }
   }
 }; // Cache previously parsed color strings
 
@@ -4022,38 +4022,38 @@ StyleParser.evalCachedColorProperty = function (val, context = {}) {
       return v;
     } // Single string color
     else if (typeof val.value === 'string') {
-        val.static = StyleParser.colorForString(val.value);
-        return val.static;
-      } // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
-      else if (val.zoom) {
-          // Parse any string colors inside stops, the first time we encounter this property
-          if (!val.zoom_preprocessed) {
-            for (let i = 0; i < val.value.length; i++) {
-              let v = val.value[i];
+      val.static = StyleParser.colorForString(val.value);
+      return val.static;
+    } // Array of zoom-interpolated stops, e.g. [zoom, color] pairs
+    else if (val.zoom) {
+      // Parse any string colors inside stops, the first time we encounter this property
+      if (!val.zoom_preprocessed) {
+        for (let i = 0; i < val.value.length; i++) {
+          let v = val.value[i];
 
-              if (v && typeof v[1] === 'string') {
-                v[1] = StyleParser.colorForString(v[1]);
-              }
-            }
-
-            val.zoom_preprocessed = true;
-          } // Calculate color for current zoom
-
-
-          val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value);
-          val.zoom[context.zoom][3] = val.zoom[context.zoom][3] || 1; // default alpha
-
-          return val.zoom[context.zoom];
-        } // Single array color
-        else {
-            val.static = val.value.map(x => x); // copy to avoid modifying
-
-            if (val.static && val.static[3] == null) {
-              val.static[3] = 1; // default alpha
-            }
-
-            return val.static;
+          if (v && typeof v[1] === 'string') {
+            v[1] = StyleParser.colorForString(v[1]);
           }
+        }
+
+        val.zoom_preprocessed = true;
+      } // Calculate color for current zoom
+
+
+      val.zoom[context.zoom] = Utils.interpolate(context.zoom, val.value);
+      val.zoom[context.zoom][3] = val.zoom[context.zoom][3] || 1; // default alpha
+
+      return val.zoom[context.zoom];
+    } // Single array color
+    else {
+      val.static = val.value.map(x => x); // copy to avoid modifying
+
+      if (val.static && val.static[3] == null) {
+        val.static[3] = 1; // default alpha
+      }
+
+      return val.static;
+    }
   }
 }; // Evaluate color cache object and apply optional alpha override (alpha arg is a single value cache object)
 
@@ -4121,8 +4121,8 @@ StyleParser.calculateOrder = function (order, context) {
       order = context.feature.properties[order];
     } // Explicit order value
     else {
-        order = parsePositiveNumber(order);
-      }
+      order = parsePositiveNumber(order);
+    }
   }
 
   return order;
@@ -4379,10 +4379,10 @@ class FeatureSelection {
           }
         } // No feature found, but still need to resolve promise
         else {
-            this.finishRead({
-              id: request.id
-            });
-          }
+          this.finishRead({
+            id: request.id
+          });
+        }
 
         request.sent = true;
       }
@@ -4480,11 +4480,11 @@ class FeatureSelection {
       sources.forEach(source => this.clearSource(source));
     } // Clear all sources
     else {
-        this.tiles = {};
-        this.map = {};
-        this.map_size = 0;
-        this.map_entry = 0;
-      }
+      this.tiles = {};
+      this.map = {};
+      this.map_size = 0;
+      this.map_entry = 0;
+    }
   }
 
   static clearSource(source) {
@@ -5587,9 +5587,7 @@ class DataSource {
   } // Sub-classes must implement
 
 
-  _load()
-  /*dest*/
-  {
+  _load() {
     throw new MethodNotImplemented('_load');
   } // Copy source data from another tile (so we can reuse source data for overzoomed tiles)
 
@@ -5679,9 +5677,7 @@ class DataSource {
     return true;
   }
 
-  validate()
-  /*source*/
-  {}
+  validate() {}
 
 }
 DataSource.types = {}; // set of supported data source classes, referenced by type name
@@ -5758,15 +5754,11 @@ class NetworkSource extends DataSource {
   } // Sub-classes must implement:
 
 
-  formatURL()
-  /*url_template, dest*/
-  {
+  formatURL() {
     throw new MethodNotImplemented('formatURL');
   }
 
-  parseSourceData()
-  /*dest, source, reponse*/
-  {
+  parseSourceData() {
     throw new MethodNotImplemented('parseSourceData');
   }
 
@@ -5855,8 +5847,8 @@ class NetworkTileSource extends NetworkSource {
         }
       } // longitude bounds cross the antimeridian
       else if (coords.x > max.x && coords.x < min.x) {
-          return false;
-        }
+        return false;
+      }
     }
 
     return true;
@@ -6267,12 +6259,12 @@ class RasterSource extends RasterTileSource {
       });
     } // Single image raster layer
     else {
-        this.images = [{
-          url: this.url,
-          bounds: this.bounds,
-          alpha: this.alpha
-        }];
-      }
+      this.images = [{
+        url: this.url,
+        bounds: this.bounds,
+        alpha: this.alpha
+      }];
+    }
   } // Render the sub-rectangle of the source raster image for the given tile, to a texture.
   // Clipping the source image to individual raster tiles naturally partitions images
   // (which may be large or only have a small portion in current view), and maintains
@@ -6615,14 +6607,10 @@ var Style = {
     return meshes[variant.key];
   },
 
-  vertexLayoutForMeshVariant()
-  /*variant*/
-  {// styles must implement
+  vertexLayoutForMeshVariant() {// styles must implement
   },
 
-  meshVariantTypeForDraw()
-  /*draw*/
-  {// styles must implement
+  meshVariantTypeForDraw() {// styles must implement
   },
 
   addFeature(feature, draw, context) {
@@ -6778,9 +6766,7 @@ var Style = {
     }
   },
 
-  _parseFeature()
-  /*feature, draw, context*/
-  {
+  _parseFeature() {
     return this.feature_style;
   },
 
@@ -7539,10 +7525,10 @@ class VertexLayout {
         this.offset[attrib.name] = attrib.offset;
       } // Static attribute
       else {
-          attrib.static = Array.isArray(attrib.static) ? attrib.static : [attrib.static]; // convert single value to array
+        attrib.static = Array.isArray(attrib.static) ? attrib.static : [attrib.static]; // convert single value to array
 
-          attrib.method = `vertexAttrib${attrib.static.length}fv`;
-        }
+        attrib.method = `vertexAttrib${attrib.static.length}fv`;
+      }
     }
   } // Enables dynamic (array-based) attributes for a given GL program
   // Assumes that the desired vertex buffer (VBO) is already bound
@@ -8570,13 +8556,13 @@ Object.assign(Polygons, {
         style.min_height = feature.properties.min_height || StyleParser.defaults.min_height;
       } // explicit height, no min_height
       else if (typeof style.extrude === 'number') {
-          style.height = style.extrude;
-          style.min_height = 0;
-        } // explicit height and min_height
-        else if (Array.isArray(style.extrude)) {
-            style.min_height = style.extrude[0];
-            style.height = style.extrude[1];
-          }
+        style.height = style.extrude;
+        style.min_height = 0;
+      } // explicit height and min_height
+      else if (Array.isArray(style.extrude)) {
+        style.min_height = style.extrude[0];
+        style.height = style.extrude[1];
+      }
 
       style.height *= Geo$1.height_scale; // provide sub-meter precision of height values
 
@@ -8731,8 +8717,8 @@ Object.assign(Polygons, {
       options);
     } // Regular polygons
     else {
-        return buildPolygons(polygons, vertex_data, vertex_template, options);
-      }
+      return buildPolygons(polygons, vertex_data, vertex_template, options);
+    }
   }
 
 });
@@ -9279,18 +9265,18 @@ function addCap(coord, v, normal, type, isBeginning, context) {
         addVertex(coord, neg_normal, normal, 0, v, context, 1);
       } // last vertex on the lineString
       else {
-          tangent = [-normal[1], normal[0]];
-          addVertex(coord, normal, normal, 1, v, context, 1);
-          addVertex(coord, neg_normal, normal, 0, v, context, 1);
+        tangent = [-normal[1], normal[0]];
+        addVertex(coord, normal, normal, 1, v, context, 1);
+        addVertex(coord, neg_normal, normal, 0, v, context, 1);
 
-          if (has_texcoord) {
-            // Add length of square cap to texture coordinate
-            v += 0.5 * context.texcoord_width * context.v_scale;
-          }
-
-          addVertex(coord, Vector$1.add(normal, tangent), normal, 1, v, context, 1);
-          addVertex(coord, Vector$1.add(neg_normal, tangent), normal, 0, v, context, 1);
+        if (has_texcoord) {
+          // Add length of square cap to texture coordinate
+          v += 0.5 * context.texcoord_width * context.v_scale;
         }
+
+        addVertex(coord, Vector$1.add(normal, tangent), normal, 1, v, context, 1);
+        addVertex(coord, Vector$1.add(neg_normal, tangent), normal, 0, v, context, 1);
+      }
 
       indexPairs(1, context);
       break;
@@ -9313,9 +9299,9 @@ function addCap(coord, v, normal, type, isBeginning, context) {
         }
       } // last vertex on the lineString - flip the direction of the cap
       else {
-          nA = neg_normal;
-          nB = normal;
-        }
+        nA = neg_normal;
+        nB = normal;
+      }
 
       if (has_texcoord) {
         zero_v[1] = v, one_v[1] = v, mid_v[1] = v; // update cap UV values
@@ -9492,9 +9478,9 @@ Object.assign(Lines, {
         style.texcoord_width = draw.inline_texcoord_width;
       } // when drawing an inline, calculate UVs based on line width
       else {
-          // UVs can't calc for zero-width, use next zoom width in that case
-          style.texcoord_width = (style.width_unscaled || style.next_width_unscaled) * context.units_per_meter_overzoom / context.tile.overzoom2; // shorten calcs
-        }
+        // UVs can't calc for zero-width, use next zoom width in that case
+        style.texcoord_width = (style.width_unscaled || style.next_width_unscaled) * context.units_per_meter_overzoom / context.tile.overzoom2; // shorten calcs
+      }
     }
 
     return true;
@@ -9509,37 +9495,37 @@ Object.assign(Lines, {
       style.offset_scale = draw.offset_scale_precalc;
     } // Offset to calculate
     else if (draw.offset) {
-        let offset = this.calcDistance(draw.offset, context);
+      let offset = this.calcDistance(draw.offset, context);
 
-        if (draw.next_offset) {
-          let next_offset = this.calcDistanceNextZoom(draw.next_offset, context) * 2;
+      if (draw.next_offset) {
+        let next_offset = this.calcDistanceNextZoom(draw.next_offset, context) * 2;
 
-          if (Math.abs(offset) >= Math.abs(next_offset)) {
-            style.offset = offset * context.units_per_meter_overzoom;
+        if (Math.abs(offset) >= Math.abs(next_offset)) {
+          style.offset = offset * context.units_per_meter_overzoom;
 
-            if (offset !== 0) {
-              style.offset_scale = 1 - next_offset / offset;
-            } else {
-              style.offset_scale = 0;
-            }
+          if (offset !== 0) {
+            style.offset_scale = 1 - next_offset / offset;
           } else {
-            style.offset = next_offset * context.units_per_meter_overzoom;
-
-            if (next_offset !== 0) {
-              style.offset_scale = (1 - offset / next_offset) * -1;
-            } else {
-              style.offset_scale = 0;
-            }
+            style.offset_scale = 0;
           }
         } else {
-          style.offset = offset * context.units_per_meter_overzoom;
-          style.offset_scale = 0;
+          style.offset = next_offset * context.units_per_meter_overzoom;
+
+          if (next_offset !== 0) {
+            style.offset_scale = (1 - offset / next_offset) * -1;
+          } else {
+            style.offset_scale = 0;
+          }
         }
-      } // No offset
-      else {
-          style.offset = 0;
-          style.offset_scale = 0;
-        }
+      } else {
+        style.offset = offset * context.units_per_meter_overzoom;
+        style.offset_scale = 0;
+      }
+    } // No offset
+    else {
+      style.offset = 0;
+      style.offset_scale = 0;
+    }
   },
 
   _parseFeature(feature, draw, context) {
@@ -10002,10 +9988,7 @@ Object.assign(Lines, {
     let vertex_data = mesh.vertex_data;
     let vertex_layout = vertex_data.vertex_layout;
     let vertex_template = this.makeVertexTemplate(style, mesh);
-    return buildPolylines(lines, style, vertex_data, vertex_template, vertex_layout.index, options && options.closed_polygon, // closed_polygon
-    !style.tile_edges && options && options.remove_tile_edges, // remove_tile_edges
-    Geo$1.tile_scale * context.tile.pad_scale * 2 // tile_edge_tolerance
-    );
+    return buildPolylines(lines, style, vertex_data, vertex_template, vertex_layout.index, options && options.closed_polygon, !style.tile_edges && options && options.remove_tile_edges, Geo$1.tile_scale * context.tile.pad_scale * 2);
   },
 
   buildPolygons(polygons, style, context) {
@@ -10277,18 +10260,18 @@ class OBB {
       this.axis_1 = ZERO_AXES[1];
     } // calculate axes and enclosing quad
     else {
-        let x0 = Math.cos(this.angle) * w2;
-        let x1 = Math.sin(this.angle) * w2;
-        let y0 = -Math.sin(this.angle) * h2;
-        let y1 = Math.cos(this.angle) * h2; // quad is a flat array storing 4 [x, y] vectors
+      let x0 = Math.cos(this.angle) * w2;
+      let x1 = Math.sin(this.angle) * w2;
+      let y0 = -Math.sin(this.angle) * h2;
+      let y1 = Math.cos(this.angle) * h2; // quad is a flat array storing 4 [x, y] vectors
 
-        this.quad = [c[0] - x0 - y0, c[1] - x1 - y1, // lower-left
-        c[0] + x0 - y0, c[1] + x1 - y1, // lower-right
-        c[0] + x0 + y0, c[1] + x1 + y1, // upper-right
-        c[0] - x0 + y0, c[1] - x1 + y1 // upper-left
-        ];
-        this.updateAxes();
-      }
+      this.quad = [c[0] - x0 - y0, c[1] - x1 - y1, // lower-left
+      c[0] + x0 - y0, c[1] + x1 - y1, // lower-right
+      c[0] + x0 + y0, c[1] + x1 + y1, // upper-right
+      c[0] - x0 + y0, c[1] - x1 + y1 // upper-left
+      ];
+      this.updateAxes();
+    }
   }
 
   static projectToAxis(obb, axis, proj) {
@@ -10712,27 +10695,27 @@ const Collision = {
               this.place(object, tile, state);
             } // If object is dependent on a parent, only show if both can be placed
             else if (this.canBePlaced(object.linked, tile, object, state)) {
-                object.show = true; // If a label is breach, its linked label should be considered breach as well
-                // (this keeps linked labels (in)visible in tandem)
+              object.show = true; // If a label is breach, its linked label should be considered breach as well
+              // (this keeps linked labels (in)visible in tandem)
 
-                if (object.label.breach || object.linked.label.breach) {
-                  object.label.breach = true;
-                  object.linked.label.breach = true;
-                } // Similarly for labels that need main thread repeat culling, keep linked labels in sync
+              if (object.label.breach || object.linked.label.breach) {
+                object.label.breach = true;
+                object.linked.label.breach = true;
+              } // Similarly for labels that need main thread repeat culling, keep linked labels in sync
 
 
-                if (object.label.may_repeat_across_tiles || object.linked.label.may_repeat_across_tiles) {
-                  object.label.may_repeat_across_tiles = true;
-                  object.linked.label.may_repeat_across_tiles = true;
-                }
-
-                labels[style].push(object);
-                this.place(object, tile, state);
-                this.place(object.linked, tile, state);
-              } else if (state.return_hidden) {
-                object.show = false;
-                labels[style].push(object);
+              if (object.label.may_repeat_across_tiles || object.linked.label.may_repeat_across_tiles) {
+                object.label.may_repeat_across_tiles = true;
+                object.linked.label.may_repeat_across_tiles = true;
               }
+
+              labels[style].push(object);
+              this.place(object, tile, state);
+              this.place(object.linked, tile, state);
+            } else if (state.return_hidden) {
+              object.show = false;
+              labels[style].push(object);
+            }
           } else if (state.return_hidden) {
             object.show = false;
             labels[style].push(object);
@@ -11902,8 +11885,7 @@ class TextCanvas {
 
     const underline_width = text_settings.underline_width || 0;
     const stroke_width = text_settings.stroke_width || 0;
-    const voffset = underline_width ? // offset text position to account for underline and text stroke
-    (underline_width + stroke_width + 1) * 0.5 * dpr : 0;
+    const voffset = underline_width ? (underline_width + stroke_width + 1) * 0.5 * dpr : 0;
     let ty = y - voffset;
 
     for (let line_num = 0; line_num < lines.length; line_num++) {
@@ -13224,9 +13206,7 @@ class Camera {
   update() {} // Called once per frame per program (e.g. for main render pass, then for each additional pass for feature selection, etc.)
 
 
-  setupProgram()
-  /*program*/
-  {} // Sync camera position/zoom to scene view
+  setupProgram() {} // Sync camera position/zoom to scene view
 
 
   updateView() {
@@ -13326,19 +13306,19 @@ class PerspectiveCamera extends Camera {
         fov = Math.atan(1 / focal_length) * 2;
       } // We have FOV, calculate focal length
       else if (fov) {
-          fov = fov * Math.PI / 180; // convert FOV degrees to radians
+        fov = fov * Math.PI / 180; // convert FOV degrees to radians
 
-          focal_length = 1 / Math.tan(fov / 2);
-        } // Distance that camera should be from ground such that it fits the field of view expected
+        focal_length = 1 / Math.tan(fov / 2);
+      } // Distance that camera should be from ground such that it fits the field of view expected
       // for a conventional web mercator map at the current zoom level and camera focal length
 
 
       height = view_height / 2 * focal_length;
     } // Solve for camera focal length / field-of-view
     else {
-        focal_length = 2 * height / view_height;
-        fov = Math.atan(1 / focal_length) * 2;
-      }
+      focal_length = 2 * height / view_height;
+      fov = Math.atan(1 / focal_length) * 2;
+    }
 
     return {
       view_height,
@@ -14383,16 +14363,16 @@ Object.assign(Points, {
         }
       } // Point at each polygon vertex (all rings)
       else {
-          let rings = geometry.coordinates;
+        let rings = geometry.coordinates;
 
-          for (let ln = 0; ln < rings.length; ln++) {
-            let point_labels = placePointsOnLine(rings[ln], size, layout);
+        for (let ln = 0; ln < rings.length; ln++) {
+          let point_labels = placePointsOnLine(rings[ln], size, layout);
 
-            for (let i = 0; i < point_labels.length; ++i) {
-              labels.push(point_labels[i]);
-            }
+          for (let i = 0; i < point_labels.length; ++i) {
+            labels.push(point_labels[i]);
           }
         }
+      }
     } else if (geometry.type === 'MultiPolygon') {
       if (layout.placement === PLACEMENT$1.CENTROID) {
         let centroid = Geo$1.multiCentroid(geometry.coordinates);
@@ -16052,8 +16032,8 @@ class StyleManager {
             // Identity check is needed to prevent infinite recursion if a previously defined uniform
             // is set to undefined
             else if (styles[shaders._uniform_scopes[u]].shaders.uniforms !== shaders.uniforms) {
-                return styles[shaders._uniform_scopes[u]].shaders.uniforms[u];
-              }
+              return styles[shaders._uniform_scopes[u]].shaders.uniforms[u];
+            }
 
             return undefined;
           },
@@ -16070,8 +16050,8 @@ class StyleManager {
         prev[cur] = true;
       } // array of extensions
       else {
-          cur.forEach(x => prev[x] = true);
-        }
+        cur.forEach(x => prev[x] = true);
+      }
 
       return prev;
     }, {}) || {}); // Shader blocks
@@ -16298,9 +16278,7 @@ function lookUp(key) {
   return 'context.feature.properties[\'' + key + '\']';
 }
 
-function nullValue()
-/*key, value*/
-{
+function nullValue() {
   return ' true ';
 }
 
@@ -16386,11 +16364,11 @@ function parseFilter(filter, options) {
     return [wrap(filter.toString() + '(context)')];
   } // Array filter, implicit 'any'
   else if (Array.isArray(filter)) {
-      return [any(null, filter, options)];
-    } // Null filter object
-    else if (filter == null) {
-        return ['true'];
-      } // Object filter, e.g. implicit 'all'
+    return [any(null, filter, options)];
+  } // Null filter object
+  else if (filter == null) {
+    return ['true'];
+  } // Object filter, e.g. implicit 'all'
 
 
   var keys = Object.keys(filter);
@@ -17385,30 +17363,30 @@ class Tile {
         }
       } // If no source layer specified, and a default data source layer exists
       else if (!source_config.layer && source_data.layers._default) {
+        layers.push({
+          geom: source_data.layers._default
+        });
+      } // If no source layer is specified, and a layer for the scene layer name exists
+      else if (!source_config.layer && scene_layer_name) {
+        layers.push({
+          layer: scene_layer_name,
+          geom: source_data.layers[scene_layer_name]
+        });
+      } // If a source layer is specified by name, use it
+      else if (typeof source_config.layer === 'string') {
+        layers.push({
+          layer: source_config.layer,
+          geom: source_data.layers[source_config.layer]
+        });
+      } // If multiple source layers are specified by name, combine them
+      else if (Array.isArray(source_config.layer)) {
+        source_config.layer.forEach(layer => {
           layers.push({
-            geom: source_data.layers._default
+            layer,
+            geom: source_data.layers[layer]
           });
-        } // If no source layer is specified, and a layer for the scene layer name exists
-        else if (!source_config.layer && scene_layer_name) {
-            layers.push({
-              layer: scene_layer_name,
-              geom: source_data.layers[scene_layer_name]
-            });
-          } // If a source layer is specified by name, use it
-          else if (typeof source_config.layer === 'string') {
-              layers.push({
-                layer: source_config.layer,
-                geom: source_data.layers[source_config.layer]
-              });
-            } // If multiple source layers are specified by name, combine them
-            else if (Array.isArray(source_config.layer)) {
-                source_config.layer.forEach(layer => {
-                  layers.push({
-                    layer,
-                    geom: source_data.layers[layer]
-                  });
-                });
-              }
+        });
+      }
     }
 
     return layers;
@@ -17498,9 +17476,9 @@ class Tile {
         this.new_mesh_styles.push(m);
       } // keep label meshes out of view until collision is complete
       else {
-          this.pending_label_meshes = this.pending_label_meshes || {};
-          this.pending_label_meshes[m] = meshes[m];
-        }
+        this.pending_label_meshes = this.pending_label_meshes || {};
+        this.pending_label_meshes[m] = meshes[m];
+      }
     }
 
     if (progress.done) {
@@ -19154,16 +19132,16 @@ class MVTSource extends NetworkTileSource {
         });
       } // otherwise try to parse all properties
       else {
-          for (const p in props) {
-            // check if this property looks like JSON, and parse if so
-            if (PARSE_JSON_TEST.indexOf(props[p][0]) > -1) {
-              try {
-                props[p] = JSON.parse(props[p]);
-              } catch (e) {// continue with original value if couldn't parse as JSON
-              }
+        for (const p in props) {
+          // check if this property looks like JSON, and parse if so
+          if (PARSE_JSON_TEST.indexOf(props[p][0]) > -1) {
+            try {
+              props[p] = JSON.parse(props[p]);
+            } catch (e) {// continue with original value if couldn't parse as JSON
             }
           }
         }
+      }
     }
   }
 
@@ -20486,14 +20464,14 @@ class TopoJSONSource extends GeoJSONSource {
       data = getTopoJSONFeature(data, data.objects[layer]);
     } // Multiple layers
     else {
-        let layers = {};
+      let layers = {};
 
-        for (let key in data.objects) {
-          layers[key] = getTopoJSONFeature(data, data.objects[key]);
-        }
-
-        data = layers;
+      for (let key in data.objects) {
+        layers[key] = getTopoJSONFeature(data, data.objects[key]);
       }
+
+      data = layers;
+    }
 
     return data;
   }
@@ -20768,16 +20746,16 @@ const SceneWorker = Object.assign(self, {
         });
       } // Tile already loaded, just rebuild
       else {
-          sources.log('trace', `used worker cache for tile ${tile.key}`); // Build geometry
+        sources.log('trace', `used worker cache for tile ${tile.key}`); // Build geometry
 
-          try {
-            sources.Tile.buildGeometry(tile, this);
-          } catch (error) {
-            // Send error to main thread
-            tile.error = error.toString();
-            sources.WorkerBroker.postMessage(`TileManager_${this.scene_id}.buildTileError`, sources.Tile.slice(tile));
-          }
+        try {
+          sources.Tile.buildGeometry(tile, this);
+        } catch (error) {
+          // Send error to main thread
+          tile.error = error.toString();
+          sources.WorkerBroker.postMessage(`TileManager_${this.scene_id}.buildTileError`, sources.Tile.slice(tile));
         }
+      }
     });
   },
 
@@ -21100,8 +21078,8 @@ function applyGlobalProperties(globals, obj, target, key) {
     prop = target[GLOBAL_REGISTRY][key];
   } // Check string for new global substitution
   else if (typeof obj === 'string' && obj.slice(0, GLOBAL_PREFIX_LENGTH) === GLOBAL_PREFIX) {
-      prop = obj;
-    } // Found global property to substitute
+    prop = obj;
+  } // Found global property to substitute
 
 
   if (prop) {
@@ -21149,14 +21127,14 @@ function applyGlobalProperties(globals, obj, target, key) {
     });
   } // Loop through object keys or array indices
   else if (Array.isArray(obj)) {
-      for (let p = 0; p < obj.length; p++) {
-        applyGlobalProperties(globals, obj[p], obj, p);
-      }
-    } else if (typeof obj === 'object') {
-      for (const p in obj) {
-        applyGlobalProperties(globals, obj[p], obj, p);
-      }
+    for (let p = 0; p < obj.length; p++) {
+      applyGlobalProperties(globals, obj[p], obj, p);
     }
+  } else if (typeof obj === 'object') {
+    for (const p in obj) {
+      applyGlobalProperties(globals, obj[p], obj, p);
+    }
+  }
 
   return obj;
 }
@@ -41763,30 +41741,30 @@ class TileManager {
       this.updateTileStates();
     } // Built with an outdated scene configuration?
     else if (tile.generation !== this.scene.generation) {
-        sources.log('trace', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because built with ` + `scene config gen ${tile.generation}, current ${this.scene.generation}`);
-        sources.Tile.abortBuild(tile);
-        this.updateTileStates();
-      } else {
-        // Update tile with properties from worker
-        if (this.tiles[tile.key]) {
-          // Ignore if from a previously discarded tile
-          if (tile.id < this.tiles[tile.key].id) {
-            sources.log('trace', `discarded tile ${tile.key} for id ${tile.id} in TileManager.buildTileStylesCompleted because built for discarded tile id`);
-            sources.Tile.abortBuild(tile);
-            return;
-          }
-
-          tile = this.tiles[tile.key].merge(tile);
+      sources.log('trace', `discarded tile ${tile.key} in TileManager.buildTileStylesCompleted because built with ` + `scene config gen ${tile.generation}, current ${this.scene.generation}`);
+      sources.Tile.abortBuild(tile);
+      this.updateTileStates();
+    } else {
+      // Update tile with properties from worker
+      if (this.tiles[tile.key]) {
+        // Ignore if from a previously discarded tile
+        if (tile.id < this.tiles[tile.key].id) {
+          sources.log('trace', `discarded tile ${tile.key} for id ${tile.id} in TileManager.buildTileStylesCompleted because built for discarded tile id`);
+          sources.Tile.abortBuild(tile);
+          return;
         }
 
-        if (progress.done) {
-          tile.built = true;
-        }
-
-        tile.buildMeshes(this.scene.styles, progress);
-        this.updateTileStates();
-        this.scene.requestRedraw();
+        tile = this.tiles[tile.key].merge(tile);
       }
+
+      if (progress.done) {
+        tile.built = true;
+      }
+
+      tile.buildMeshes(this.scene.styles, progress);
+      this.updateTileStates();
+      this.scene.requestRedraw();
+    }
 
     if (progress.done) {
       this.tileBuildStop(tile.key);
@@ -43055,28 +43033,28 @@ class Scene {
         });
       } // Traditional alpha blending
       else if (blend === 'overlay' || blend === 'inlay' || blend === 'translucent') {
-          render_states.blending.set({
-            blend: true,
-            src: gl.SRC_ALPHA,
-            dst: gl.ONE_MINUS_SRC_ALPHA,
-            src_alpha: gl.ONE,
-            dst_alpha: gl.ONE_MINUS_SRC_ALPHA
-          });
-        } // Additive blending
-        else if (blend === 'add') {
-            render_states.blending.set({
-              blend: true,
-              src: gl.ONE,
-              dst: gl.ONE
-            });
-          } // Multiplicative blending
-          else if (blend === 'multiply') {
-              render_states.blending.set({
-                blend: true,
-                src: gl.ZERO,
-                dst: gl.SRC_COLOR
-              });
-            }
+        render_states.blending.set({
+          blend: true,
+          src: gl.SRC_ALPHA,
+          dst: gl.ONE_MINUS_SRC_ALPHA,
+          src_alpha: gl.ONE,
+          dst_alpha: gl.ONE_MINUS_SRC_ALPHA
+        });
+      } // Additive blending
+      else if (blend === 'add') {
+        render_states.blending.set({
+          blend: true,
+          src: gl.ONE,
+          dst: gl.ONE
+        });
+      } // Multiplicative blending
+      else if (blend === 'multiply') {
+        render_states.blending.set({
+          blend: true,
+          src: gl.ZERO,
+          dst: gl.SRC_COLOR
+        });
+      }
     } else {
       render_states.blending.set({
         blend: false
@@ -44434,7 +44412,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = 'e852060228bcc1eceed18b97317b4a7f95c72c0d';
+	Tangram.debug.SHA = '6af2f26aca79bf5f5b9f0fa7e041285f3fef607f';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
