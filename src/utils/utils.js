@@ -60,10 +60,7 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
                     else {
                         if (method === 'FAIR') {
                             let response;
-                            if (!request.response.startsWith('{"keys":')) {
-                                console.log('Response is pure json');
-                                response = JSON.parse(request.response);
-                            } else {
+                            if (request.response.startsWith('{"keys":')) {
                                 console.log('Response is FairOS values');
                                 response = atob(JSON.parse(request.response).values);
                                 const delim = response.indexOf(',');
@@ -73,6 +70,9 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
                                     response = response.replaceAll('""', '"');
                                     response = response.slice(0, -1);
                                 }
+                            } else {
+                                console.log('Response is pure json');
+                                response = JSON.parse(request.response);
                             }
 
                             resolve({body: response, status: request.status});
