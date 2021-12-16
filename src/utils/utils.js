@@ -59,13 +59,20 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
                     }
                     else {
                         if (method === 'FAIR') {
-                            let response = atob(JSON.parse(request.response).values);
-                            const delim = response.indexOf(',');
-                            if (delim > -1) {
-                                // +1 for indexOf +1 for "
-                                response = response.substring(delim + 2);
-                                response = response.replaceAll('""', '"');
-                                response = response.slice(0, -1);
+                            let response;
+                            if (request.response[0] === '{') {
+                                console.log('Response is pure json');
+                                response = JSON.parse(request.response);
+                            } else {
+                                console.log('Response is FairOS values');
+                                response = atob(JSON.parse(request.response).values);
+                                const delim = response.indexOf(',');
+                                if (delim > -1) {
+                                    // +1 for indexOf +1 for "
+                                    response = response.substring(delim + 2);
+                                    response = response.replaceAll('""', '"');
+                                    response = response.slice(0, -1);
+                                }
                             }
 
                             resolve({body: response, status: request.status});

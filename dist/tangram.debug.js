@@ -2824,14 +2824,22 @@ Utils.io = function (url, timeout, responseType, method, headers, request_key, p
             });
           } else {
             if (method === 'FAIR') {
-              var response = atob(JSON.parse(request.response).values);
-              var delim = response.indexOf(',');
+              var response;
 
-              if (delim > -1) {
-                // +1 for indexOf +1 for "
-                response = response.substring(delim + 2);
-                response = response.replaceAll('""', '"');
-                response = response.slice(0, -1);
+              if (request.response[0] === '{') {
+                console.log('Response is pure json');
+                response = JSON.parse(request.response);
+              } else {
+                console.log('Response is FairOS values');
+                response = atob(JSON.parse(request.response).values);
+                var delim = response.indexOf(',');
+
+                if (delim > -1) {
+                  // +1 for indexOf +1 for "
+                  response = response.substring(delim + 2);
+                  response = response.replaceAll('""', '"');
+                  response = response.slice(0, -1);
+                }
               }
 
               resolve({
@@ -49377,7 +49385,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = '6af2f26aca79bf5f5b9f0fa7e041285f3fef607f';
+	Tangram.debug.SHA = '664943f9d5cb398c3f2f6fedf92c4e9321ec5904';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
