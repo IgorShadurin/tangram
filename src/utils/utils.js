@@ -60,7 +60,7 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
                     else {
                         if (method === 'FAIR') {
                             let response;
-                            if (request.response[0] === '{') {
+                            if (!request.response.startsWith('{"keys":')) {
                                 console.log('Response is pure json');
                                 response = JSON.parse(request.response);
                             } else {

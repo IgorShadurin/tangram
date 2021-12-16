@@ -2748,6 +2748,42 @@ if (_fails(function () { return $toString.call({ source: 'a', flags: 'b' }) != '
   });
 }
 
+// helper for String#{startsWith, endsWith, includes}
+
+
+
+var _stringContext = function (that, searchString, NAME) {
+  if (_isRegexp(searchString)) throw TypeError('String#' + NAME + " doesn't accept regex!");
+  return String(_defined(that));
+};
+
+var MATCH$1 = _wks('match');
+var _failsIsRegexp = function (KEY) {
+  var re = /./;
+  try {
+    '/./'[KEY](re);
+  } catch (e) {
+    try {
+      re[MATCH$1] = false;
+      return !'/./'[KEY](re);
+    } catch (f) { /* empty */ }
+  } return true;
+};
+
+var STARTS_WITH = 'startsWith';
+var $startsWith = ''[STARTS_WITH];
+
+_export(_export.P + _export.F * _failsIsRegexp(STARTS_WITH), 'String', {
+  startsWith: function startsWith(searchString /* , position = 0 */) {
+    var that = _stringContext(this, searchString, STARTS_WITH);
+    var index = _toLength(Math.min(arguments.length > 1 ? arguments[1] : undefined, that.length));
+    var search = String(searchString);
+    return $startsWith
+      ? $startsWith.call(that, search, index)
+      : that.slice(index, index + search.length) === search;
+  }
+});
+
 var Utils = {};
 WorkerBroker$1.addTarget('Utils', Utils); // Basic Safari detection
 // http://stackoverflow.com/questions/7944460/detect-safari-browser
@@ -2826,7 +2862,7 @@ Utils.io = function (url, timeout, responseType, method, headers, request_key, p
             if (method === 'FAIR') {
               var response;
 
-              if (request.response[0] === '{') {
+              if (!request.response.startsWith('{"keys":')) {
                 console.log('Response is pure json');
                 response = JSON.parse(request.response);
               } else {
@@ -49385,7 +49421,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = false; // mark build as ES module
-	Tangram.debug.SHA = '664943f9d5cb398c3f2f6fedf92c4e9321ec5904';
+	Tangram.debug.SHA = 'df24ad2a1ff93f68f44d9ee2f44f8d22552999ff';
 	if (false === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}

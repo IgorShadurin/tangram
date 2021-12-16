@@ -655,7 +655,7 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             if (method === 'FAIR') {
               let response;
 
-              if (request.response[0] === '{') {
+              if (!request.response.startsWith('{"keys":')) {
                 console.log('Response is pure json');
                 response = JSON.parse(request.response);
               } else {
@@ -44420,7 +44420,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = '664943f9d5cb398c3f2f6fedf92c4e9321ec5904';
+	Tangram.debug.SHA = 'df24ad2a1ff93f68f44d9ee2f44f8d22552999ff';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
