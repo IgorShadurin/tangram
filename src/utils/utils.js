@@ -37,8 +37,7 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             Utils._proxy_requests[request_key] = true; // mark as proxied
         }
         return WorkerBroker.postMessage('Utils.io', url, timeout, responseType, method, headers, request_key, true);
-    }
-    else {
+    } else {
         var request = new XMLHttpRequest();
         var promise = new Promise((resolve, reject) => {
             request.open(method === 'FAIR' ? 'GET' : method, url, true);
@@ -55,22 +54,28 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             request.onload = () => {
                 if (request.status === 200) {
                     if (['text', 'json'].indexOf(request.responseType) > -1) {
-                        resolve({ body: request.responseText, status: request.status });
-                    }
-                    else {
+                        resolve({body: request.responseText, status: request.status});
+                    } else {
                         if (method === 'FAIR') {
                             let response;
                             if (request.response.startsWith('{"keys":')) {
                                 console.log('Response is FairOS values');
                                 response = atob(JSON.parse(request.response).values);
-                                const delim = response.indexOf(',');
-                                if (delim > -1) {
-                                    // +1 for indexOf +1 for "
-                                    response = response.substring(delim + 2);
-                                    response = response.replaceAll('""', '"');
-                                    response = response.slice(0, -1);
+                                const isUploadedWithKv = response.indexOf('""');
+                                if (isUploadedWithKv) {
+                                    console.log('Uploaded with KV');
+                                } else {
+                                    console.log('Uploaded with CSV');
+                                    const delim = response.indexOf(',');
+                                    if (delim > -1) {
+                                        // +1 for indexOf +1 for "
+                                        response = response.substring(delim + 2);
+                                        response = response.replaceAll('""', '"');
+                                        response = response.slice(0, -1);
+                                    }
                                 }
                             } else {
+                                // cache layer
                                 console.log('Response is pure json');
                                 response = JSON.parse(request.response);
                             }
@@ -80,11 +85,9 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
                             resolve({body: request.response, status: request.status});
                         }
                     }
-                }
-                else if (request.status === 204) { // No Content
-                    resolve({ body: null, status: request.status });
-                }
-                else {
+                } else if (request.status === 204) { // No Content
+                    resolve({body: null, status: request.status});
+                } else {
                     reject(Error('Request error with a status of ' + request.statusText));
                 }
             };
@@ -92,7 +95,7 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
                 reject(Error('There was a network error' + evt.toString()));
             };
             request.ontimeout = (evt) => {
-                reject(Error('timeout '+ evt.toString()));
+                reject(Error('timeout ' + evt.toString()));
             };
             if (method === 'FAIR') {
                 // allow send/receive cookies by api url
@@ -133,8 +136,7 @@ Utils.cancelRequest = function (key) {
         log('trace', `Cancelling network request key '${key}'`);
         Utils._requests[key].abort();
         delete Utils._requests[key];
-    }
-    else {
+    } else {
         log('trace', `Could not find network request key '${key}'`);
     }
 };
@@ -145,7 +147,7 @@ Utils.serializeWithFunctions = function (obj) {
         return obj.toString();
     }
 
-    let serialized = JSON.stringify(obj, function(k, v) {
+    let serialized = JSON.stringify(obj, function (k, v) {
         // Convert functions to strings
         if (typeof v === 'function') {
             return v.toString();
@@ -171,7 +173,7 @@ if (Thread.is_main) {
 
 // Used for differentiating between power-of-2 and non-power-of-2 textures
 // Via: http://stackoverflow.com/questions/19722247/webgl-wait-for-texture-to-load
-Utils.isPowerOf2 = function(value) {
+Utils.isPowerOf2 = function (value) {
     return (value & (value - 1)) === 0;
 };
 
@@ -189,12 +191,11 @@ Utils.isPowerOf2 = function(value) {
 //
 // TODO: add other interpolation methods besides linear
 //
-Utils.interpolate = function(x, points, transform) {
+Utils.interpolate = function (x, points, transform) {
     // If this doesn't resemble a list of control points, just return the original value
     if (!Array.isArray(points) || !Array.isArray(points[0])) {
         return points;
-    }
-    else if (points.length < 1) {
+    } else if (points.length < 1) {
         return points;
     }
 
@@ -208,32 +209,31 @@ Utils.interpolate = function(x, points, transform) {
         }
     }
     // Max bounds
-    else if (x >= points[points.length-1][0]) {
-        y = points[points.length-1][1];
+    else if (x >= points[points.length - 1][0]) {
+        y = points[points.length - 1][1];
         if (typeof transform === 'function') {
             y = transform(y);
         }
     }
     // Find which control points x is between
     else {
-        for (var i=0; i < points.length - 1; i++) {
-            if (x >= points[i][0] && x < points[i+1][0]) {
+        for (var i = 0; i < points.length - 1; i++) {
+            if (x >= points[i][0] && x < points[i + 1][0]) {
                 // Linear interpolation
                 x1 = points[i][0];
-                x2 = points[i+1][0];
+                x2 = points[i + 1][0];
 
                 // Multiple values
                 if (Array.isArray(points[i][1])) {
                     y = [];
-                    for (var c=0; c < points[i][1].length; c++) {
+                    for (var c = 0; c < points[i][1].length; c++) {
                         if (typeof transform === 'function') {
                             y1 = transform(points[i][1][c]);
-                            y2 = transform(points[i+1][1][c]);
+                            y2 = transform(points[i + 1][1][c]);
                             d = y2 - y1;
                             y[c] = d * (x - x1) / (x2 - x1) + y1;
-                        }
-                        else {
-                            d = points[i+1][1][c] - points[i][1][c];
+                        } else {
+                            d = points[i + 1][1][c] - points[i][1][c];
                             y[c] = d * (x - x1) / (x2 - x1) + points[i][1][c];
                         }
                     }
@@ -242,12 +242,11 @@ Utils.interpolate = function(x, points, transform) {
                 else {
                     if (typeof transform === 'function') {
                         y1 = transform(points[i][1]);
-                        y2 = transform(points[i+1][1]);
+                        y2 = transform(points[i + 1][1]);
                         d = y2 - y1;
                         y = d * (x - x1) / (x2 - x1) + y1;
-                    }
-                    else {
-                        d = points[i+1][1] - points[i][1];
+                    } else {
+                        d = points[i + 1][1] - points[i][1];
                         y = d * (x - x1) / (x2 - x1) + points[i][1];
                     }
                 }

@@ -655,20 +655,28 @@ Utils.io = function (url, timeout = 60000, responseType = 'text', method = 'GET'
             if (method === 'FAIR') {
               let response;
 
-              if (!request.response.startsWith('{"keys":')) {
-                console.log('Response is pure json');
-                response = JSON.parse(request.response);
-              } else {
+              if (request.response.startsWith('{"keys":')) {
                 console.log('Response is FairOS values');
                 response = atob(JSON.parse(request.response).values);
-                const delim = response.indexOf(',');
+                const isUploadedWithKv = response.indexOf('""');
 
-                if (delim > -1) {
-                  // +1 for indexOf +1 for "
-                  response = response.substring(delim + 2);
-                  response = response.replaceAll('""', '"');
-                  response = response.slice(0, -1);
+                if (isUploadedWithKv) {
+                  console.log('Uploaded with KV');
+                } else {
+                  console.log('Uploaded with CSV');
+                  const delim = response.indexOf(',');
+
+                  if (delim > -1) {
+                    // +1 for indexOf +1 for "
+                    response = response.substring(delim + 2);
+                    response = response.replaceAll('""', '"');
+                    response = response.slice(0, -1);
+                  }
                 }
+              } else {
+                // cache layer
+                console.log('Response is pure json');
+                response = JSON.parse(request.response);
               }
 
               resolve({
@@ -44420,7 +44428,7 @@ return index;
 // Script modules can't expose exports
 try {
 	Tangram.debug.ESM = true; // mark build as ES module
-	Tangram.debug.SHA = 'df24ad2a1ff93f68f44d9ee2f44f8d22552999ff';
+	Tangram.debug.SHA = '3dbc6dc923dbbabeb8d163cc9c40eee30b9928f8';
 	if (true === true && typeof window === 'object') {
 	    window.Tangram = Tangram;
 	}
