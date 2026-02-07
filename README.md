@@ -97,3 +97,7 @@ Tangram is open-source, and we eagerly welcome feedback, feature requests, and c
 For instructions, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Tangram JS was created by [Mapzen](https://www.mapzen.com/) and is now a [Linux Foundation Project](https://www.linuxfoundation.org/press-release/2019/01/mapzen-open-source-data-and-software-for-real-time-mapping-applications-to-become-a-linux-foundation-project/).
+
+---
+
+Try [YumCut](https://yumcut.com)! This is an AI video generator that turns a single prompt into a ready-to-post vertical short video in minutes. It creates the script, images, voice-over, subtitles, and edits everything into a final clip automatically. It’s built for fast testing and making lots of variations without spending hours in an editor.
